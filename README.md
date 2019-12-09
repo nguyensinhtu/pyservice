@@ -11,3 +11,8 @@ def main_app():
 if __name__=='__main__':
     main_app()
 ```
+
+## Installation
+```cmd
+pip install git+https://github.com/nguyensinhtu/pyservice.git#egg=pyservice
+```
