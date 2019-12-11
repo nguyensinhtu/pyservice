@@ -8,8 +8,6 @@ import atexit
 import signal
 import time
 
-_TMP_PATH = '/zserver/tmp/'
-_APP_LOG = '/data/logs/'
 _EXIT_CODE = -1
 _SUCCESS_CODE = 0
 
@@ -35,6 +33,18 @@ def get_args_parser():
     parser.add_argument('args', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     return args
+
+def get_tmp_path():
+    if 'APP_TMP' in os.environ:
+        app_tmp_path = os.environ['APP_TMP']
+        if os.path.exists(app_tmp_path):
+            return app_tmp_path
+        else:
+            _print_err('Error: Your APP_TMP is set to \"%s\", which is not exists!!\n'%(app_tmp_path))
+            sys.exit(1)
+    
+    _print_err('Error: Can not found APP_TMP in environment variables\n')
+    sys.exit(1)
 
 def set_app_args(args):
     app_args = []
@@ -74,17 +84,17 @@ def print_app_info(app_name, pid):
                                 'PID: %s\n'%(str(pid))])
     _print(output_app_info)
 
-def _restart(app_name, args):
+def _restart(tmp_path, app_name, args):
     _print('Trying to stop Application...\n')
-    _stop(app_name, args)
+    _stop(tmp_path, app_name, args)
     _print('Trying to start program...\n')
-    exit_code = _start(app_name, args)
+    exit_code = _start(tmp_path, app_name, args)
     return exit_code
 
 
-def _start(app_name, args):
+def _start(tmp_path, app_name, args):
     
-    app_dir = _TMP_PATH+'%s/'%(app_name)
+    app_dir = tmp_path+'%s/'%(app_name)
     pid_path = app_dir+'%s.pid'%(app_name)
 
     try:
@@ -102,11 +112,11 @@ def _start(app_name, args):
         print_sys_info()
         return _EXIT_CODE
     
-    _daemonize(app_name)
+    _daemonize(tmp_path, app_name)
     return _SUCCESS_CODE 
 
-def del_pidfile(app_name):
-    app_dir = _TMP_PATH+'%s/'%(app_name)
+def del_pidfile(tmp_path, app_name):
+    app_dir = tmp_path+'%s/'%(app_name)
     pid_path = app_dir+'%s.pid'%(app_name)
     # log_path = app_dir+'%s.logs'%(app_name)
 
@@ -120,7 +130,7 @@ def del_pidfile(app_name):
     # except OSError or FileNotFoundError as err:
         # _print_err("Failed to delete app_dir(%s) : %s"%(app_dir, err.strerror))
 
-def _daemonize(app_name):
+def _daemonize(tmp_path, app_name):
     """ start demon process """
     try:
         pid = os.fork()
@@ -145,7 +155,7 @@ def _daemonize(app_name):
         sys.exit(1)
 
     # save pid info and logging
-    app_dir = _TMP_PATH+'%s/'%(app_name)
+    app_dir = tmp_path+'%s/'%(app_name)
     try:
         os.mkdir(app_dir)
     except FileExistsError as err:
@@ -171,14 +181,14 @@ def _daemonize(app_name):
     logfile.close()
     logerr_file.close()
 
-    atexit.register(del_pidfile, app_name)
+    atexit.register(del_pidfile, tmp_path, app_name)
 
     return _SUCCESS_CODE
 
-def _stop(app_name, args):
+def _stop(tmp_path, app_name, args):
 
     # get pid file
-    app_dir = _TMP_PATH+'%s/'%(app_name)
+    app_dir = tmp_path+'%s/'%(app_name)
     pid_path = app_dir+'%s.pid'%(app_name)
     log_path = app_dir+'%s.logs'%(app_name)
     logerr_path = app_dir+'%s.error.logs'%(app_name)
@@ -217,10 +227,10 @@ def _stop(app_name, args):
     print_sys_info()
     return _EXIT_CODE
 
-def _status(app_name, args):
+def _status(tmp_path, app_name, args):
     print_sys_info()
     try:
-        pidfile = open(_TMP_PATH+'%s/%s.pid'%(app_name, app_name), 'r')
+        pidfile = open(tmp_path+'%s/%s.pid'%(app_name, app_name), 'r')
         pid = int(pidfile.readline().strip())
         pidfile.close()
     except IOError as err:
@@ -237,7 +247,8 @@ def before_run(app_name, args):
     selected_opt = options[args.options]
     
     # run option
-    exit_code = selected_opt(app_name, args)
+    tmp_path = get_tmp_path()
+    exit_code = selected_opt(tmp_path, app_name, args)
     if exit_code < 0:
         sys.exit(1)
 

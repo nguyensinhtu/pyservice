@@ -16,3 +16,9 @@ if __name__=='__main__':
 ```cmd
 pip install git+https://github.com/nguyensinhtu/pyservice.git#egg=pyservice
 ```
+
+## NOTE:
+Để start được service bạn cần set APP_TMP
+```cmd
+export APP_TMP=/your_path/tmp/
+```

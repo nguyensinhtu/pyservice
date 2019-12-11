@@ -1,6 +1,6 @@
 from pyservice import app
 
-@app.main
+@app.main(app_name='abc')
 def main_app():
     while True:
         print('hello')
