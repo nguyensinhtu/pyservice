@@ -216,7 +216,8 @@ def _stop(tmp_path, app_name, args):
     # try to kill process
     try:
         while True:
-            os.kill(pid, signal.SIGTERM)
+            pgid = os.getpgid(pid)
+            os.killpg(pgid, signal.SIGTERM)
             time.sleep(0.1)
     except OSError as err:
         if err.strerror.find('No such process') >= 0:
