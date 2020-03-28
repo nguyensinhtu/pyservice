@@ -19,7 +19,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser(description='Arg to start python aplication!!', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('options', type=str, \
                         choices=['start', 'stop', 'restart' ,'status', 'sysinfo'], \
-                        help='\n'.join(['The first option is service action:',
+                        help='\n'.join(["The first option is service's action:",
                             '- start: launch the program',
 	                        '- stop: kill the program',
 	                        '- restart: kill the program first, then launch again the program',
