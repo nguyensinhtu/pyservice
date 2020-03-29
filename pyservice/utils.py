@@ -8,6 +8,9 @@ import atexit
 import signal
 import time
 
+import psutil
+
+_TIME_OUT = 1  # second
 _EXIT_CODE = -1
 _SUCCESS_CODE = 0
 
@@ -18,8 +21,8 @@ _print_err = sys.stderr.write
 def get_args_parser():
     parser = argparse.ArgumentParser(description='Arg to start python aplication!!',
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('options', type=str, \
-                        choices=['start', 'stop', 'restart', 'status', 'sysinfo'], \
+    parser.add_argument('options', type=str,
+                        choices=['start', 'stop', 'restart', 'status', 'sysinfo'],
                         help='\n'.join(["The first option is service's action:",
                                         '- start: launch the program',
                                         '- stop: kill the program',
@@ -195,6 +198,28 @@ def _daemonize(tmp_path, app_name):
     return _SUCCESS_CODE
 
 
+def _kill_proc_tree(pid, sig, include_parent=True,
+                    timeout=None, on_terminate=None, app_name=None):
+    try:
+        if pid == os.getpid():
+            return _EXIT_CODE
+        proc = psutil.Process(pid)
+        children = proc.children(recursive=True)
+        if include_parent:
+            children.append(proc)
+        _print("Trying to terminate %d processes in %r ...\n" % (len(children), app_name))
+        for p in children:
+            p.send_signal(sig)
+        gones, alives = psutil.wait_procs(children,
+                                          timeout=timeout, callback=on_terminate)
+        for p in alives:
+            p.kill()
+    except psutil.NoSuchProcess:
+        return _EXIT_CODE
+
+    return _SUCCESS_CODE
+
+
 def _stop(tmp_path, app_name, args):
     # get pid file
     app_dir = tmp_path + '%s/' % app_name
@@ -214,24 +239,19 @@ def _stop(tmp_path, app_name, args):
         return _EXIT_CODE
 
     # try to kill process
-    try:
-        while True:
-            pgid = os.getpgid(pid)
-            os.killpg(pgid, signal.SIGTERM)
-            time.sleep(0.1)
-    except OSError as err:
-        if err.strerror.find('No such process') >= 0:
-            if os.path.exists(pid_path):
-                os.remove(pid_path)
-            if os.path.exists(log_path):
-                os.remove(log_path)
-            if os.path.exists(logerr_path):
-                os.remove(logerr_path)
+    if _kill_proc_tree(pid, signal.SIGTERM, timeout=_TIME_OUT, app_name=app_name) < 0:
+        return _EXIT_CODE
+    if os.path.exists(pid_path):
+        os.remove(pid_path)
+    if os.path.exists(log_path):
+        os.remove(log_path)
+    if os.path.exists(logerr_path):
+        os.remove(logerr_path)
 
-            try:
-                os.rmdir(app_dir)
-            except OSError or FileNotFoundError as err:
-                _print_err('Failed to deleted app_dir(%s): %s' % (app_dir, err.strerror))
+    try:
+        os.rmdir(app_dir)
+    except OSError or FileNotFoundError as err:
+        _print_err('Failed to deleted app_dir(%s): %s' % (app_dir, err.strerror))
 
     _print('Application is stopped successfully!!!\n')
     print_sys_info()
