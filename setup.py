@@ -9,7 +9,7 @@ setup(name='pyservice',
       packages=['pyservice'],
       include_package_data=True,
       zip_safe=False,
-      install_requires=['requests'],
+      install_requires=['psutil==5.7.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Developers',
