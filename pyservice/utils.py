@@ -167,7 +167,7 @@ def _daemonize(tmp_path, app_name):
         sys.exit(1)
 
     # save pid info and logging
-    app_dir = tmp_path + '%s/' % app_name
+    app_dir = os.path.join(tmp_path, app_name)
     try:
         os.mkdir(app_dir)
     except FileExistsError as err:
